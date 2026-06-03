@@ -1,0 +1,35 @@
+name: Update NEC results
+
+on:
+  workflow_dispatch:        # 수동 실행 버튼
+  schedule:
+    - cron: '*/5 * * * *'   # 5분마다 (UTC 기준, 약간 지연될 수 있음)
+
+permissions:
+  contents: write           # data.json 커밋 권한
+
+concurrency:
+  group: nec-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Fetch NEC and write data.json
+        run: python update_nec.py
+      - name: Commit if changed
+        run: |
+          git config user.name "nec-bot"
+          git config user.email "nec-bot@users.noreply.github.com"
+          if [ -n "$(git status --porcelain data.json)" ]; then
+            git add data.json
+            git commit -m "update results $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          else
+            echo "no change"
+          fi
